@@ -38,9 +38,6 @@ export default function LoginForm(): JSX.Element {
       setServerError(result.error);
       return;
     }
-
-    // router.push("/dashboard");
-    // router.refresh();
   };
 
   return (
@@ -52,9 +49,9 @@ export default function LoginForm(): JSX.Element {
         {/* Header */}
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back
+            Welcome to Bean Counter!
           </h1>
-          <p className="text-sm text-gray-500">Sign in to your account</p>
+          <p className="text-sm text-gray-500">Log in to your account</p>
         </div>
 
         {/* Server error */}
@@ -101,13 +98,12 @@ export default function LoginForm(): JSX.Element {
           {isSubmitting ? "Signing in..." : "Login"}
         </button>
         <div className="text-center text-sm text-gray-600">
-          Don’t have an account?{" "}
           <button
             type="button"
-            onClick={() => router.push("/register")}
+            onClick={() => router.push("/forgotPassword")}
             className="font-medium text-black hover:underline"
           >
-            Create one
+            Reset Password
           </button>
         </div>
       </form>
