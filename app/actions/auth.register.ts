@@ -1,60 +1,46 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
-
-export type RegisterState = {
-  error?: string;
-  success?: boolean;
-};
+import { hash } from "bcryptjs";
 
 type RegisterInput = {
-  email: string;
+  token: string;
+  // phoneNumber: string;
   password: string;
-  fullName?: string;
-  roleId: number;
+  confirmPassword: string;
 };
 
-export async function registerAction(
-  data: RegisterInput
-): Promise<RegisterState> {
-  try {
-    const { email, password, fullName, roleId } = data;
+export async function registerUserAction(input: RegisterInput) {
+  const { token, password, confirmPassword } = input;
 
-    if (!email || !password || !roleId) {
-      return { error: "Missing required fields" };
-    }
+  if (password !== confirmPassword) throw new Error("Passwords do not match");
 
-    const role = await prisma.role.findUnique({
-      where: { id: roleId },
-    });
+  const invite = await prisma.userInvite.findUnique({ where: { token } });
+  if (!invite || invite.expiresAt < new Date())
+    throw new Error("Invalid or expired invite token");
 
-    if (!role) {
-      return { error: "Invalid role" };
-    }
+  const existingUser = await prisma.user.findUnique({
+    where: { email: invite.email },
+  });
+  if (existingUser) throw new Error("User already registered");
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+  const hashedPassword = await hash(password, 10);
 
-    if (existingUser) {
-      return { error: "Email already registered" };
-    }
+  await prisma.user.create({
+    data: {
+      email: invite.email,
+      firstName: invite.firstName,
+      lastName: invite.lastName,
+      fullName: `${invite.firstName} ${invite.lastName}`,
+      roleId: invite.roleId,
+      // phoneNumber,
+      password: hashedPassword,
+      isActive: true,
+      emailVerifiedAt: new Date(),
+    },
+  });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+  await prisma.userInvite.delete({ where: { token } });
 
-    await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        fullName,
-        roleId,
-      },
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("REGISTER_ACTION_ERROR:", error);
-    return { error: "Something went wrong" };
-  }
+  return { success: true };
 }

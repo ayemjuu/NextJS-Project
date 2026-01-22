@@ -1,160 +1,100 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { useTransition, useState, JSX } from "react";
-import { registerAction, RegisterState } from "@/app/actions/auth.register";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { CustomInput } from "@/components/CustomInput";
 import { useRouter } from "next/navigation";
+import { registerUserAction } from "@/app/actions/auth.register";
 
-type Role = {
-  id: number;
-  name: string;
-};
+const registerSchema = z
+  .object({
+    token: z.string(),
+    // phoneNumber: z
+    //   .string()
+    //   .min(1, "Phone number is required")
+    //   .regex(/^\+?\d{7,15}$/, "Invalid phone number"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string().min(6),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
-type RegisterFormValues = {
-  email: string;
-  password: string;
-  fullName?: string;
-  roleId: number;
-};
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 type Props = {
-  roles: Role[];
+  inviteData: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    roleName: string;
+  };
+  token: string;
 };
 
-export default function RegisterForm({ roles }: Props): JSX.Element {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
+export default function RegisterForm({ inviteData, token }: Props) {
+  const router = useRouter();
+
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
-      roleId: roles[0]?.id,
+      token,
+      // phoneNumber: "",
+      password: "",
+      confirmPassword: "",
     },
   });
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [serverState, setServerState] = useState<RegisterState>({});
 
-  const onSubmit = (data: RegisterFormValues) => {
-    startTransition(async () => {
-      const result = await registerAction(data);
-      setServerState(result);
-    });
-    reset();
-  };
+  async function onSubmit(data: RegisterFormValues) {
+    try {
+      await registerUserAction(data);
+      router.push("/login");
+    } catch (err: any) {
+      alert(err.message || "Registration failed");
+    }
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-md space-y-5 rounded-xl border bg-white p-6 shadow-sm"
-      >
-        {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Create an account
-          </h1>
-          <p className="text-sm text-gray-500">
-            Fill in the details below to get started
-          </p>
-        </div>
+    <form
+      onSubmit={form.handleSubmit(onSubmit)}
+      className="max-w-md mx-auto space-y-4"
+    >
+      <h1 className="text-2xl font-bold mb-4">Complete Your Registration</h1>
 
-        {/* Server messages */}
-        {serverState.error && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
-            {serverState.error}
-          </div>
-        )}
+      {/* Prefilled, disabled inputs */}
+      <CustomInput label="Email" value={inviteData.email} disabled />
+      <CustomInput label="First Name" value={inviteData.firstName} disabled />
+      <CustomInput label="Last Name" value={inviteData.lastName} disabled />
+      <CustomInput label="Role Name" value={inviteData.roleName} disabled />
 
-        {serverState.success && (
-          <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-600">
-            Account created successfully
-          </div>
-        )}
+      <input type="hidden" {...form.register("token")} value={token} />
 
-        {/* Full Name */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Full Name</label>
-          <input
-            {...register("fullName")}
-            placeholder="Juan Dela Cruz"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-          />
-        </div>
+      {/* Editable inputs */}
+      {/* <CustomInput
+        label="Phone Number"
+        placeholder="+1234567890"
+        error={form.formState.errors.phoneNumber?.message}
+        {...form.register("phoneNumber")}
+      /> */}
+      <CustomInput
+        label="Password"
+        type="password"
+        error={form.formState.errors.password?.message}
+        {...form.register("password")}
+      />
+      <CustomInput
+        label="Confirm Password"
+        type="password"
+        error={form.formState.errors.confirmPassword?.message}
+        {...form.register("confirmPassword")}
+      />
 
-        {/* Email */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Email</label>
-          <input
-            type="email"
-            {...register("email", { required: "Email is required" })}
-            placeholder="you@example.com"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-          />
-          {errors.email && (
-            <p className="text-xs text-red-600">{errors.email.message}</p>
-          )}
-        </div>
-
-        {/* Password */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Password</label>
-          <input
-            type="password"
-            {...register("password", {
-              required: "Password is required",
-              minLength: { value: 6, message: "Minimum 6 characters" },
-            })}
-            placeholder="••••••••"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-          />
-          {errors.password && (
-            <p className="text-xs text-red-600">{errors.password.message}</p>
-          )}
-        </div>
-
-        {/* Role */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Role</label>
-          <select
-            {...register("roleId", {
-              valueAsNumber: true,
-              required: "Role is required",
-            })}
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-          >
-            {roles.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </select>
-
-          {errors.roleId && (
-            <p className="text-xs text-red-600">{errors.roleId.message}</p>
-          )}
-        </div>
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full rounded-md bg-black py-2.5 text-sm font-medium text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isPending ? "Creating account..." : "Register"}
-        </button>
-        <div className="text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <button
-            type="button"
-            onClick={() => router.push("/login")}
-            className="font-medium text-black hover:underline"
-          >
-            Sign in
-          </button>
-        </div>
-      </form>
-    </div>
+      <Button type="submit" className="w-full">
+        Register
+      </Button>
+    </form>
   );
 }
