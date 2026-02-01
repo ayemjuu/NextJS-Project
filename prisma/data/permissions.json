@@ -1,0 +1,23 @@
+[
+  { "action": "read", "module": "dashboard" },
+
+  { "action": "read", "module": "inventory" },
+  { "action": "create", "module": "inventory" },
+  { "action": "update", "module": "inventory" },
+  { "action": "delete", "module": "inventory" },
+
+  { "action": "read", "module": "category" },
+  { "action": "create", "module": "category" },
+  { "action": "update", "module": "category" },
+  { "action": "delete", "module": "category" },
+
+  { "action": "read", "module": "access-management", "submodule": "users" },
+  { "action": "create", "module": "access-management", "submodule": "users" },
+  { "action": "update", "module": "access-management", "submodule": "users" },
+  { "action": "delete", "module": "access-management", "submodule": "users" },
+
+  { "action": "read", "module": "access-management", "submodule": "roles" },
+  { "action": "create", "module": "access-management", "submodule": "roles" },
+  { "action": "update", "module": "access-management", "submodule": "roles" },
+  { "action": "delete", "module": "access-management", "submodule": "roles" }
+]

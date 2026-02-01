@@ -4,6 +4,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { v4 as uuidv4 } from "uuid";
+
+import rolePermissions from "./data/permissions.json";
+
 // Create adapter with Pool (required for @prisma/adapter-pg)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -24,43 +27,69 @@ async function main() {
   await prisma.$connect();
   console.log("✅ Database connected");
 
-  //roles
-  const userRole = await prisma.role.upsert({
-    where: { name: "USER" },
-    update: {},
-    create: {
-      name: "USER",
-      description: "Regular user with basic access",
-    },
+  await prisma.permission.createMany({
+    data: rolePermissions,
+    skipDuplicates: true,
   });
-  console.log(`✅ Role: ${userRole.name}`);
 
-  const moderatorRole = await prisma.role.upsert({
-    where: { name: "MODERATOR" },
-    update: {},
-    create: {
-      name: "MODERATOR",
-      description: "Moderator with elevated permissions",
-    },
-  });
-  console.log(`✅ Role: ${moderatorRole.name}`);
-
+  const permissions = await prisma.permission.findMany();
   const adminRole = await prisma.role.upsert({
     where: { name: "ADMIN" },
-    update: {},
+    update: {
+      permissions: {
+        set: permissions.map((p) => ({ id: p.id })),
+      },
+    },
     create: {
       name: "ADMIN",
       description: "Administrator with full access",
+      permissions: {
+        connect: permissions.map((p) => ({ id: p.id })),
+      },
     },
   });
-  console.log(`✅ Role: ${adminRole.name}`);
+  const moderatorPermissions = permissions.filter(
+    (p) =>
+      p.module === "categories" ||
+      p.module === "inventory" ||
+      (p.module === "users" && p.action === "read") ||
+      (p.module === "roles" && p.action === "read"),
+  );
+  const moderatorRole = await prisma.role.upsert({
+    where: { name: "MODERATOR" },
+    update: {
+      permissions: {
+        set: moderatorPermissions.map((p) => ({ id: p.id })),
+      },
+    },
+    create: {
+      name: "MODERATOR",
+      description: "Moderator with elevated permissions",
+      permissions: {
+        connect: moderatorPermissions.map((p) => ({ id: p.id })),
+      },
+    },
+  });
+  const userPermissions = permissions.filter((p) => p.action === "read");
+  const userRole = await prisma.role.upsert({
+    where: { name: "USER" },
+    update: {
+      permissions: {
+        set: userPermissions.map((p) => ({ id: p.id })),
+      },
+    },
+    create: {
+      name: "USER",
+      description: "Regular user with basic access",
+      permissions: {
+        connect: userPermissions.map((p) => ({ id: p.id })),
+      },
+    },
+  });
 
   // Step 2: Seed Users
   console.log("\n👥 Seeding Users...");
-
   const password = await bcrypt.hash("Password123", 10);
-  console.log("✅ Password hashed");
-
   const users = [
     {
       id: uuidv4(),
@@ -70,6 +99,9 @@ async function main() {
       fullName: "Admin User",
       phoneNumber: "+1234567890",
       password,
+      roleId: userRole.id,
+      isActive: true,
+      emailVerifiedAt: new Date(),
     },
     {
       id: uuidv4(),
@@ -79,6 +111,9 @@ async function main() {
       fullName: "John Doe",
       phoneNumber: "+1234567890",
       password,
+      roleId: moderatorRole.id,
+      isActive: true,
+      emailVerifiedAt: new Date(),
     },
     {
       id: uuidv4(),
@@ -88,6 +123,9 @@ async function main() {
       fullName: "Kyle Manuel",
       phoneNumber: "+1234567890",
       password,
+      roleId: adminRole.id,
+      isActive: true,
+      emailVerifiedAt: new Date(),
     },
   ];
 
@@ -98,10 +136,7 @@ async function main() {
       where: { email: user.email },
       update: {},
       // create: user,
-      create: {
-        ...user,
-        roleId: userRole.id, // 👈 REQUIRED
-      },
+      create: user,
     });
     console.log(`  ✅ ${result.email} (${result.id})`);
   }
@@ -111,9 +146,21 @@ async function main() {
   console.log(`\n✅ Seeding complete! Total users: ${count}`);
 
   // List all users
-  const allUsers = await prisma.user.findMany();
+  const allUsers = await prisma.user.findMany({
+    include: {
+      role: {
+        include: {
+          permissions: true,
+        },
+      },
+    },
+  });
   console.log("\n📋 All users:");
-  allUsers.forEach((u) => console.log(`  - ${u.email} (${u.fullName})`));
+  allUsers.forEach((u) => {
+    console.log(
+      `  - ${u.email} (${u.fullName}) - Role: ${u.role.name} - Permissions: ${u.role.permissions.length}`,
+    );
+  });
 }
 
 main()

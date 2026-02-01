@@ -10,13 +10,31 @@ datasource db {
 
 
 model Role {
-  id          Int      @id @default(autoincrement())
+  // id          Int      @id @default(autoincrement())
+   id          String @id @default(cuid())
   name        String   @unique  // "USER", "ADMIN", "MODERATOR"
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   users       User[]
   invites     UserInvite[]
+  permissions Permission[]
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  action      String  // create, read, update, delete
+  module      String  // users, categories, inventory, etc.
+  submodule   String  @default("")  // optional for more granular control
+  description String  @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles Role[]
+
+  @@unique([action, module, submodule])
+  @@index([module])
 }
 
 model User {
@@ -27,7 +45,7 @@ model User {
   lastName  String
   fullName  String?
   phoneNumber      String
-  roleId    Int  
+  roleId    String  
   emailVerifiedAt  DateTime?
   isActive         Boolean  @default(false)
 
@@ -37,6 +55,8 @@ model User {
   role      Role     @relation(fields: [roleId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([roleId])
 }
 
 model UserInvite {
@@ -44,13 +64,15 @@ model UserInvite {
   email       String   @unique
   firstName   String
   lastName    String
-  roleId      Int
+  roleId      String
   token       String   @unique
   expiresAt   DateTime
   usedAt      DateTime?
 
   role        Role     @relation(fields: [roleId], references: [id])
   createdAt   DateTime @default(now())
+
+  @@index([roleId])
 }
 
 

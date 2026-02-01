@@ -8,12 +8,12 @@ import { CustomSelect } from "@/components/CustomSelect";
 import { CustomInput } from "@/components/CustomInput";
 import { inviteUserAction } from "../actions/invite.user";
 import { useRouter } from "next/navigation";
-import { userFormSchema, UserFormValues } from "../schema";
 import { editUserAction } from "../actions/edit.user";
 import { showToast } from "@/lib/toast";
+import { userFormSchema, UserFormValues } from "../schema";
 
 type RoleOption = {
-  id: number;
+  id: string;
   name: string;
 };
 
@@ -22,7 +22,7 @@ type UserData = {
   email: string;
   firstName?: string;
   lastName?: string;
-  roleId?: number;
+  roleId?: string;
   isActive?: boolean;
   emailVerified?: boolean;
 };
@@ -46,9 +46,10 @@ export default function AccessManagementForm({
       firstName: editUser?.firstName || "",
       lastName: editUser?.lastName || "",
       isActive: editUser?.isActive ?? true,
-      roleId: editUser?.roleId || 0,
+      roleId: editUser?.roleId || "",
     },
   });
+
   const {
     formState: { isDirty, isSubmitting },
   } = form;
@@ -57,12 +58,21 @@ export default function AccessManagementForm({
   async function onSubmit(data: UserFormValues) {
     try {
       if (isEditMode && editUser) {
-        await editUserAction({ ...data, id: editUser.id });
+        await editUserAction({
+          id: data.id!,
+          email: data.email,
+          roleId: data.roleId,
+          isActive: data.isActive,
+        });
         showToast.success("User updated", "Changes were saved successfully");
       } else {
-        // add new user
-        const { id, ...inviteData } = data;
-        await inviteUserAction(inviteData);
+        await inviteUserAction({
+          email: data.email,
+          firstName: data.firstName!,
+          lastName: data.lastName!,
+          roleId: data.roleId,
+          isActive: data.isActive,
+        });
         showToast.success(
           "Invite sent",
           "The user will receive an email invitation",
@@ -70,10 +80,11 @@ export default function AccessManagementForm({
       }
       router.refresh();
       onSuccess();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as Error;
       showToast.error(
         "Something went wrong",
-        err?.message ?? "Please try again",
+        error?.message ?? "Please try again",
       );
       console.error(err);
     }
@@ -126,7 +137,7 @@ export default function AccessManagementForm({
         value={form.watch("roleId")?.toString()}
         error={form.formState.errors.roleId?.message}
         onChange={(value) =>
-          form.setValue("roleId", Number(value), {
+          form.setValue("roleId", value, {
             shouldValidate: true,
             shouldDirty: true,
           })

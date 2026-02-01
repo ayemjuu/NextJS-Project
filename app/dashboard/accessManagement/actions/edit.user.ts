@@ -1,23 +1,20 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { userFormSchema, UserFormValues } from "../schema";
+import { UserFormValues } from "../schema";
 
 export async function editUserAction(input: UserFormValues) {
-  console.log("editUserAction called with input:", input);
-  const data = userFormSchema.parse(input);
-
-  if (!data.id) {
+  if (!input.id) {
     throw new Error("User ID is required for editing");
   }
 
   // Check if user exists
   const user = await prisma.user.findUnique({
-    where: { id: data.id },
+    where: { id: input.id },
   });
 
   const invite = await prisma.userInvite.findUnique({
-    where: { id: data.id },
+    where: { id: input.id },
   });
 
   if (!user && !invite) {
@@ -27,9 +24,9 @@ export async function editUserAction(input: UserFormValues) {
   // Check if email is being changed and if it's already taken
   if (user) {
     // Check if email is being changed and if it's already taken
-    if (data.email !== user.email) {
+    if (input.email !== user.email) {
       const emailExists = await prisma.user.findUnique({
-        where: { email: data.email },
+        where: { email: input.email },
       });
 
       if (emailExists) {
@@ -39,23 +36,23 @@ export async function editUserAction(input: UserFormValues) {
 
     // Update user
     await prisma.user.update({
-      where: { id: data.id },
+      where: { id: input.id },
       data: {
-        email: data.email,
-        firstName: data.firstName || user.firstName,
-        lastName: data.lastName || user.lastName,
-        fullName: `${data.firstName || user.firstName} ${data.lastName || user.lastName}`,
-        roleId: data.roleId,
-        isActive: data.isActive,
+        email: input.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        fullName: `${user.firstName} ${user.lastName}`,
+        roleId: input.roleId,
+        isActive: input.isActive,
       },
     });
   }
 
   if (invite) {
     // Check if email is being changed and if it's already taken
-    if (data.email !== invite.email) {
+    if (input.email !== invite.email) {
       const emailExists = await prisma.user.findUnique({
-        where: { email: data.email },
+        where: { email: input.email },
       });
 
       if (emailExists) {
@@ -65,12 +62,12 @@ export async function editUserAction(input: UserFormValues) {
 
     // Update invite
     await prisma.userInvite.update({
-      where: { id: data.id },
+      where: { id: input.id },
       data: {
-        email: data.email,
-        firstName: data.firstName || invite.firstName,
-        lastName: data.lastName || invite.lastName,
-        roleId: data.roleId,
+        email: input.email,
+        firstName: invite.firstName,
+        lastName: invite.lastName,
+        roleId: input.roleId,
       },
     });
   }
