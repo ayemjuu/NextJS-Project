@@ -16,7 +16,7 @@ export type UserRow = {
 };
 
 export type RoleOption = {
-  id: number;
+  id: string;
   name: string;
 };
 //server component
@@ -84,7 +84,7 @@ export default async function AccessManagement() {
   }));
 
   const rows: UserRow[] = [...userRows, ...inviteRows].sort(
-    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
 
   const roles = await prisma.role.findMany({

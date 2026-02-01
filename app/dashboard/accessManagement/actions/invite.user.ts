@@ -2,21 +2,31 @@
 
 import prisma from "@/lib/prisma";
 import { randomBytes } from "crypto";
-import { AddFormValues, userFormSchema } from "../schema";
+import { UserFormValues } from "../schema";
 import { sendInviteEmail } from "@/lib/email";
 
-export async function inviteUserAction(input: AddFormValues) {
-  const data = userFormSchema.parse(input);
-
+export async function inviteUserAction(input: UserFormValues) {
+  if (!input.firstName?.trim()) {
+    throw new Error("First name is required");
+  }
+  if (!input.lastName?.trim()) {
+    throw new Error("Last name is required");
+  }
+  if (!input.email) {
+    throw new Error("Email is required");
+  }
+  if (!input.roleId) {
+    throw new Error("Role is required");
+  }
   // Check if user already exists
   const exists = await prisma.user.findUnique({
-    where: { email: data.email },
+    where: { email: input.email },
   });
 
   if (exists) throw new Error("User already exists");
 
   const existingInvitedUser = await prisma.userInvite.findUnique({
-    where: { email: data.email },
+    where: { email: input.email },
   });
 
   if (existingInvitedUser) {
@@ -30,15 +40,15 @@ export async function inviteUserAction(input: AddFormValues) {
 
   await prisma.userInvite.create({
     data: {
-      email: data.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      roleId: data.roleId,
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      roleId: input.roleId,
       token,
       expiresAt,
     },
   });
 
-  await sendInviteEmail(data.email, token);
+  await sendInviteEmail(input.email, token);
   return { success: true, token };
 }

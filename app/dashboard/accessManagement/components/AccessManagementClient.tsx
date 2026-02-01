@@ -10,13 +10,15 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { showToast } from "@/lib/toast";
 import { RoleOption, UserRow } from "../users/page";
+import Link from "next/link";
+import { Pencil, Trash2 } from "lucide-react";
 // import { DeleteUserButton } from "./DeleteUserButton";
 type EditUserData = {
   id: string;
   email: string;
   firstName?: string;
   lastName?: string;
-  roleId?: number;
+  roleId?: string;
   isActive?: boolean;
   emailVerified?: boolean;
 };
@@ -114,16 +116,12 @@ export default function AccessManagementClient({
       header: "",
       className: "text-right",
       cell: (row) => (
-        <div className="flex justify-end gap-2">
-          <Button size="sm" variant="outline" onClick={() => handleEdit(row)}>
-            Edit
+        <div className="flex justify-center gap-2">
+          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => setDeleteUser(row)}
-          >
-            Delete
+          <Button size="sm" variant="ghost" onClick={() => setDeleteUser(row)}>
+            <Trash2 className="h-4 w-4 text-red-500" />
           </Button>
         </div>
       ),
@@ -131,9 +129,9 @@ export default function AccessManagementClient({
   ];
 
   return (
-    <div className="p-6 space-y-4">
+    <div className=" rounded-lg border p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Access Management</h1>
+        <h1 className="text-xl font-semibold">Search</h1>
 
         <Button onClick={handleAddNew}>Add User</Button>
       </div>
