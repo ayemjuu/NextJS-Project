@@ -90,7 +90,9 @@ model Session {
 
 
 model Category {
-  id          Int      @id @default(autoincrement())
+  // id          Int      @id @default(autoincrement())
+  id          String  @id @default(cuid())
+
   name        String   @unique
   description String?
   icon        String?  // emoji

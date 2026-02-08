@@ -34,7 +34,6 @@ export async function getCurrentUser() {
 
   try {
     const payload = await verifyAccessToken(token);
-
     return {
       userId: payload.userId,
       role: payload.role,

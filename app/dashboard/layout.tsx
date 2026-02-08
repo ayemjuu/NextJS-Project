@@ -10,6 +10,8 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUserWithDetails();
+
+  console.log("Current user in layout:", user);
   const sidebarUser = user
     ? {
         fullName: user.fullName ?? null,
