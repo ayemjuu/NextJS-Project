@@ -1,53 +1,120 @@
 "use client";
 
+import { Category } from "@/app/generated/prisma/browser";
 import { DataTable, Column } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
+import { Pencil, Trash2 } from "lucide-react";
+import { usePermission } from "@/app/(auth)/AuthProvider";
 import { deleteCategory } from "../actions";
+import { useRouter } from "next/navigation";
+import { showToast } from "@/lib/toast";
+import { CustomModal } from "@/components/CustomModal";
+import { useState } from "react";
 
-type Category = {
-  id: number;
-  name: string;
-  description: string | null;
-  icon: string | null;
-  color: string | null;
-};
-
-function CategoryActions({ id }: { id: number }) {
-  return (
-    <form action={deleteCategory.bind(null, id)}>
-      <Button size="sm" variant="destructive">
-        Delete
-      </Button>
-    </form>
-  );
-}
-
-const columns: Column<Category>[] = [
-  {
-    key: "icon",
-    header: "",
-    cell: (row) => <span>{row.icon}</span>,
-  },
-  {
-    key: "name",
-    header: "Name",
-  },
-  {
-    key: "description",
-    header: "Description",
-    className: "text-muted-foreground",
-  },
-  {
-    key: "actions",
-    header: "",
-    cell: (row) => <CategoryActions id={row.id} />,
-  },
-];
-
-export default function CategoriesTable({
+export default function CategoryTable({
   categories,
+  onEdit,
 }: {
   categories: Category[];
+  onEdit: (category: Category) => void;
 }) {
-  return <DataTable data={categories} keyField="id" columns={columns} />;
+  const [deleteUser, setDeleteUser] = useState<Category | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const { can } = usePermission();
+  const router = useRouter();
+
+  const handleDelete = async () => {
+    if (!can("category:delete")) return;
+
+    if (!deleteUser) return;
+    setDeleting(true);
+    try {
+      await deleteCategory(deleteUser.id);
+      showToast.warning("Category deleted", "The category has been removed");
+      router.refresh();
+      setDeleteUser(null);
+    } catch (err) {
+      showToast.error("Delete failed", "Unable to delete category");
+      console.error(err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const columns: Column<Category>[] = [
+    {
+      key: "name",
+      header: "Name",
+      cell: (row) => (
+        <div className="flex items-center gap-2">
+          {row.icon && <span>{row.icon}</span>}
+          <span>{row.name}</span>
+        </div>
+      ),
+    },
+    {
+      key: "description",
+      header: "Description",
+      cell: (row) => row.description ?? "—",
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "text-right",
+      cell: (row) => (
+        <div className="flex justify-center gap-2">
+          {can("category:update") && (
+            <Button size="sm" variant="ghost" onClick={() => onEdit(row)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+
+          {can("category:delete") && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setDeleteUser(row)}
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <DataTable data={categories} columns={columns} keyField="id" />
+      <CustomModal
+        open={!!deleteUser}
+        onOpenChange={(v) => !v && setDeleteUser(null)}
+        title="Delete Category"
+        description="This action cannot be undone. This will permanently delete the category."
+      >
+        <div className="space-y-4">
+          <p className="text-sm">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">{deleteUser?.name}</span>?
+          </p>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteUser(null)}>
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              loading={deleting}
+              onClick={handleDelete}
+            >
+              Delete Category
+            </Button>
+          </div>
+        </div>
+      </CustomModal>
+    </>
+  );
 }

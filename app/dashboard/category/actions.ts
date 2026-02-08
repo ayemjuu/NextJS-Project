@@ -1,51 +1,60 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
-
-const categories = await prisma.category.findMany({
-  orderBy: { createdAt: "desc" },
-});
-console.log(categories);
-
-export async function createCategory(formData: FormData) {
-  const name = formData.get("name") as string;
-  const description = formData.get("description") as string | null;
-  const icon = formData.get("icon") as string | null;
-  const color = formData.get("color") as string | null;
-
-  if (!name) throw new Error("Name is required");
-
+import { CategoryFormValues } from "./client";
+export async function createCategory(values: CategoryFormValues) {
   await prisma.category.create({
     data: {
-      name,
-      description,
-      icon,
-      color,
+      name: values.name,
+      description: values.description,
+      icon: values.icon,
+      color: values.color,
     },
   });
-
-  revalidatePath("/categories");
+  return { success: true };
 }
 
-export async function updateCategory(id: number, formData: FormData) {
+export async function updateCategory(id: string, values: CategoryFormValues) {
+  if (!id) {
+    throw new Error("Category ID is required for editing");
+  }
+
+  const existing = await prisma.category.findUnique({
+    where: { id: id },
+  });
+
+  if (!existing) {
+    throw new Error("Category not found");
+  }
+
   await prisma.category.update({
     where: { id },
     data: {
-      name: formData.get("name") as string,
-      description: formData.get("description") as string | null,
-      icon: formData.get("icon") as string | null,
-      color: formData.get("color") as string | null,
+      name: values.name,
+      icon: values.icon,
+      color: values.color,
+      description: values.description,
     },
   });
 
-  revalidatePath("/categories");
+  return { success: true };
 }
 
-export async function deleteCategory(id: number) {
+export async function deleteCategory(id: string) {
+  if (!id) {
+    throw new Error("Category ID is required for editing");
+  }
+
+  const existing = await prisma.category.findUnique({
+    where: { id: id },
+  });
+
+  if (!existing) {
+    throw new Error("Category not found");
+  }
+
   await prisma.category.delete({
     where: { id },
   });
-
-  revalidatePath("/categories");
+  return { success: true };
 }
